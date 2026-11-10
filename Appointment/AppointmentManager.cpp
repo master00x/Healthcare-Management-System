@@ -4,7 +4,8 @@
 #include <fstream>
 #include <cstring>
 #include <string>
-
+#include "../SecondaryIndex/secondaryIndexManager.h"
+extern SecondaryIndexManager secIdx;
 using namespace std;
 
 bool setField(char *field, int size, const string &value)
@@ -150,6 +151,7 @@ void addAppointment()
         cout << "Error writing Appointment!\n";
     else
         cout << "Appointment added successfully!\n";
+        secIdx.onAppointmentAdded(id, doctorID); 
 
     file.close();
 }
@@ -320,6 +322,9 @@ void deleteAppointment()
 
         if (memcmp(app.appointmentID, searchID, 15) == 0)
         {
+            string doctorID(app.DoctorID, 15);                             
+            while (!doctorID.empty() && doctorID.back() == ' ') doctorID.pop_back();
+
             char deletedMarker = '*';
 
             file.clear();
@@ -331,6 +336,7 @@ void deleteAppointment()
                 cout << "Error deleting Appointment!\n";
             else
                 cout << "Appointment deleted successfully!\n";
+                secIdx.onAppointmentDeleted(id, doctorID);      
 
             file.close();
             return;

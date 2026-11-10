@@ -3,8 +3,11 @@
 #include <limits>
 #include "Appointment/AppointmentManager.h"
 #include "Doctors/doctorManager.h"
+#include "SecondaryIndex/secondaryIndexManager.h"
 
 using namespace std;
+
+SecondaryIndexManager secIdx;
 
 void doctorMenu()
 {
@@ -161,6 +164,7 @@ void appointmentMenu()
 
 int main()
 {
+    secIdx.open();
     initializeDoctorFile();
 
     int choice;
@@ -170,6 +174,7 @@ int main()
         cout << "\n===== Healthcare Management System =====\n";
         cout << "1. Doctor Management\n";
         cout << "2. Appointment Management\n";
+        cout << "3. Print Secondary Indexes\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
 
@@ -190,6 +195,9 @@ int main()
             break;
         case 2:
             appointmentMenu();
+            break;
+        case 3:
+            secIdx.printAll();
             break;
         case 0:
             cout << "Exiting...\n";
