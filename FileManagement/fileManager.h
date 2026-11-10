@@ -15,6 +15,7 @@ int readHeader(string filename);
 void writeHeader(string filename, int offset);
 int getFirstAvailable(string filename);
 void insertRecord (string filename ,char record[], int recordSize);
+void deleteRecord(string filename, int recordOffset,int recordSize);
 
 
 
