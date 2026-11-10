@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <fstream>
+#include "../SecondaryIndex/secondaryIndexManager.h"
+extern SecondaryIndexManager secIdx;
 
 using namespace std;
 
@@ -97,6 +99,8 @@ bool addDoctor(const Doctor& doctor, string& message) {
 
     file.close();
 
+    secIdx.onDoctorAdded(doctor.doctorID, doctor.doctorName, doctor.specialty);   
+
     message = "Doctor added successfully.";
 
     return true;
@@ -158,7 +162,7 @@ bool updateDoctorName(string doctorID, string newName) {
     file.read(record, DOCTOR_RECORD_SIZE);
 
     Doctor doctor = deserializeDoctor(record);
-
+    string oldName = doctor.doctorName;    
     doctor.doctorName = newName;
 
     serializeDoctor(doctor, record);
@@ -168,6 +172,7 @@ bool updateDoctorName(string doctorID, string newName) {
 
     file.close();
 
+    secIdx.onDoctorNameUpdated(doctorID, oldName, newName);
     return true;
 }
 
@@ -193,6 +198,7 @@ bool updateDoctorSpecialty(string doctorID, string newSpecialty) {
     file.read(record, DOCTOR_RECORD_SIZE);
 
     Doctor doctor = deserializeDoctor(record);
+    string oldSpecialty = doctor.specialty;
 
     doctor.specialty = newSpecialty;
 
@@ -202,7 +208,7 @@ bool updateDoctorSpecialty(string doctorID, string newSpecialty) {
     file.write(record, DOCTOR_RECORD_SIZE);
 
     file.close();
-
+    secIdx.onDoctorSpecialtyUpdated(doctorID, oldSpecialty, newSpecialty);
     return true;
 }
 
@@ -276,6 +282,9 @@ bool updateDoctorID(string oldID, string newID) {
 
     file.close();
 
+    if (oldID != newID)                                                   
+        secIdx.onDoctorIDUpdated(oldID, newID, doctor.doctorName, doctor.specialty);
+
     return true;
 }
 
@@ -292,6 +301,12 @@ bool deleteDoctor(string doctorID) {
     if (!file)
         return false;
 
+    char record[DOCTOR_RECORD_SIZE];                 
+    file.seekg(position);                           
+    file.read(record, DOCTOR_RECORD_SIZE);          
+    Doctor doctor = deserializeDoctor(record);     
+
+    file.clear(); 
     file.seekp(position);
 
     char mark = '*';
@@ -299,6 +314,7 @@ bool deleteDoctor(string doctorID) {
     file.write(&mark, 1);
 
     file.close();
+    secIdx.onDoctorDeleted(doctor.doctorID, doctor.doctorName, doctor.specialty);
 
     return true;
 }
