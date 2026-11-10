@@ -66,10 +66,10 @@ bool appointmentExists(string id)
 
     while (file.read(record, 60))
     {
-        if (record[0] == '*')
+        if (record[30] == '*')
             continue;
 
-        if (memcmp(record, searchID, 15) == 0)
+        if (memcmp(record + 30, searchID, 15) == 0)
         {
             file.close();
             return true;
@@ -323,7 +323,7 @@ void deleteAppointment()
             char deletedMarker = '*';
 
             file.clear();
-            file.seekp(recordPosition);
+            file.seekp(recordPosition + streamoff(30));
 
             file.write(&deletedMarker, sizeof(char));
 
