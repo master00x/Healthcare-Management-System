@@ -73,3 +73,4 @@ Data/Doctors.dat
 test_doctor.cpp
 Data/Appointments.dat
 .vscode/tasks.json
+.vscode/
