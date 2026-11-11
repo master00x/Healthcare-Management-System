@@ -139,9 +139,10 @@ void insertRecord(string filename, char record[], int recordSize)
 
     file.close();
 }
+
 void deleteRecord(string filename, int recordOffset, int recordSize)
 {
-    
+
     fstream file(filename, ios::in | ios::out | ios::binary);
 
     if (!file.is_open())
@@ -153,7 +154,7 @@ void deleteRecord(string filename, int recordOffset, int recordSize)
     // Read the current AVAIL LIST header
     int avail;
     file.seekg(0, ios::beg);
-    file.read((char*)&avail, sizeof(int));
+    file.read((char *)&avail, sizeof(int));
 
     if (!file)
     {
@@ -193,12 +194,11 @@ void deleteRecord(string filename, int recordOffset, int recordSize)
 
     // Store the old header as the next pointer
     file.seekp(recordOffset + 1, ios::beg);
-    file.write((char*)&avail, sizeof(int));
+    file.write((char *)&avail, sizeof(int));
 
     // Update header to point to the newly deleted record
     file.seekp(0, ios::beg);
-    file.write((char*)&recordOffset, sizeof(int));
-
+    file.write((char *)&recordOffset, sizeof(int));
 
     if (!file)
         cout << "Error updating AVAIL LIST!" << endl;
@@ -206,71 +206,42 @@ void deleteRecord(string filename, int recordOffset, int recordSize)
     file.close();
 }
 
-
-
-void deleteRecord(string filename, int recordOffset, int recordSize)
+bool readRecord(string filename, int recordOffset,
+                char record[], int recordSize)
 {
-    
-    fstream file(filename, ios::in | ios::out | ios::binary);
+    fstream file(filename, ios::in | ios::binary);
 
     if (!file.is_open())
     {
         cout << "Error opening file!" << endl;
-        return;
+        return false;
     }
 
-    // Read the current AVAIL LIST header
-    int avail;
-    file.seekg(0, ios::beg);
-    file.read((char*)&avail, sizeof(int));
-
-    if (!file)
+    if (recordOffset < sizeof(int) || recordSize <= 0 || record == nullptr)
     {
-        cout << "Error reading header!" << endl;
+        cout << "Invalid record parameters!" << endl;
         file.close();
-        return;
+        return false;
     }
 
-    // Get file size
-    file.seekg(0, ios::end);
-    streampos fileSize = file.tellg();
-
-    // Validate record offset and size
-    if (recordOffset < sizeof(int) ||
-        recordOffset + recordSize > fileSize)
-    {
-        cout << "Invalid record offset!" << endl;
-        file.close();
-        return;
-    }
-
-    // Check if the record is already deleted
-    char marker;
     file.seekg(recordOffset, ios::beg);
-    file.read(&marker, 1);
-
-    if (!file || marker == '*')
-    {
-        cout << "Invalid or already deleted record!" << endl;
-        file.close();
-        return;
-    }
-
-    // Mark the record as deleted
-    file.seekp(recordOffset, ios::beg);
-    file.write("*", 1);
-
-    // Store the old header as the next pointer
-    file.seekp(recordOffset + 1, ios::beg);
-    file.write((char*)&avail, sizeof(int));
-
-    // Update header to point to the newly deleted record
-    file.seekp(0, ios::beg);
-    file.write((char*)&recordOffset, sizeof(int));
-
 
     if (!file)
-        cout << "Error updating AVAIL LIST!" << endl;
+    {
+        cout << "Error seeking to record!" << endl;
+        file.close();
+        return false;
+    }
+
+    file.read(record, recordSize);
+
+    if (!file)
+    {
+        cout << "Error reading record!" << endl;
+        file.close();
+        return false;
+    }
 
     file.close();
+    return true;
 }
