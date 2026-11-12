@@ -1,5 +1,7 @@
 #include "doctorManager.h"
 #include "doctorStorage.h"
+#include "../PrimaryIndex/PrimaryIndex.h"
+#include "../FileManagement/fileManager.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,14 +13,17 @@ using namespace std;
 const string DOCTOR_FILE = "Data/Doctors.dat";
 
 // Initialize Doctors file
-void initializeDoctorFile() {
+void initializeDoctorFile()
+{
 
     ifstream checkFile(DOCTOR_FILE, ios::binary);
 
-    if (checkFile) {
+    if (checkFile)
+    {
         checkFile.seekg(0, ios::end);
 
-        if (checkFile.tellg() >= sizeof(int)) {
+        if (checkFile.tellg() >= sizeof(int))
+        {
             checkFile.close();
             return;
         }
@@ -30,56 +35,33 @@ void initializeDoctorFile() {
 
     int head = -1;
 
-    file.write((char*)&head, sizeof(int));
+    file.write((char *)&head, sizeof(int));
 
     file.close();
 }
 
 // Find doctor and return its position
-int findDoctor(string doctorID) {
-
-    ifstream file(DOCTOR_FILE, ios::binary);
-
-    if (!file)
-        return -1;
-
-    char record[DOCTOR_RECORD_SIZE];
-
-    int position = sizeof(int);
-
-    while (file.read(record, DOCTOR_RECORD_SIZE)) {
-
-        if (record[0] != '*') {
-
-            Doctor doctor = deserializeDoctor(record);
-
-            if (doctor.doctorID == doctorID) {
-                file.close();
-                return position;
-            }
-        }
-
-        position += DOCTOR_RECORD_SIZE;
-    }
-
-    file.close();
-
-    return -1;
+int findDoctor(string doctorID)
+{
+    return PrimaryIndex::findDoctor(doctorID);
 }
 
 // Add doctor
-bool addDoctor(const Doctor& doctor, string& message) {
+bool addDoctor(const Doctor &doctor, string &message)
+{
 
     string errorMessage;
 
-    if (!validateDoctor(doctor, errorMessage)) {
+    if (!validateDoctor(doctor, errorMessage))
+    {
         message = errorMessage;
         return false;
     }
 
     initializeDoctorFile();
 
-    if (findDoctor(doctor.doctorID) != -1) {
+    if (findDoctor(doctor.doctorID) != -1)
+    {
         message = "Doctor ID already exists.";
         return false;
     }
@@ -88,30 +70,38 @@ bool addDoctor(const Doctor& doctor, string& message) {
 
     serializeDoctor(doctor, record);
 
-    ofstream file(DOCTOR_FILE, ios::binary | ios::app);
+    int offset = insertRecord(DOCTOR_FILE, record, DOCTOR_RECORD_SIZE);
 
-    if (!file) {
-        message = "File could not be opened.";
+    if (offset == -1)
+    {
+        message = "Error writing Doctor record.";
         return false;
     }
 
-    file.write(record, DOCTOR_RECORD_SIZE);
+    if (!PrimaryIndex::insertDoctor(doctor.doctorID, offset))
+    {
+        message = "Error updating Doctor Primary Index.";
+        return false;
+    }
 
-    file.close();
-
-    secIdx.onDoctorAdded(doctor.doctorID, doctor.doctorName, doctor.specialty);   
+    if (!secIdx.onDoctorAdded(doctor.doctorID, doctor.doctorName, doctor.specialty))
+    {
+        message = "Error updating Doctor Secondary Index.";
+        return false;
+    }
 
     message = "Doctor added successfully.";
-
     return true;
 }
 
 // Display doctor
-bool displayDoctor(string doctorID) {
+bool displayDoctor(string doctorID)
+{
 
     int position = findDoctor(doctorID);
 
-    if (position == -1) {
+    if (position == -1)
+    {
         cout << "Doctor not found." << endl;
         return false;
     }
@@ -141,7 +131,8 @@ bool displayDoctor(string doctorID) {
 }
 
 // Update doctor name
-bool updateDoctorName(string doctorID, string newName) {
+bool updateDoctorName(string doctorID, string newName)
+{
 
     if (newName.length() > 30)
         return false;
@@ -162,7 +153,7 @@ bool updateDoctorName(string doctorID, string newName) {
     file.read(record, DOCTOR_RECORD_SIZE);
 
     Doctor doctor = deserializeDoctor(record);
-    string oldName = doctor.doctorName;    
+    string oldName = doctor.doctorName;
     doctor.doctorName = newName;
 
     serializeDoctor(doctor, record);
@@ -177,7 +168,8 @@ bool updateDoctorName(string doctorID, string newName) {
 }
 
 // Update doctor specialty
-bool updateDoctorSpecialty(string doctorID, string newSpecialty) {
+bool updateDoctorSpecialty(string doctorID, string newSpecialty)
+{
 
     if (newSpecialty.length() > 20)
         return false;
@@ -213,7 +205,8 @@ bool updateDoctorSpecialty(string doctorID, string newSpecialty) {
 }
 
 // Update doctor address
-bool updateDoctorAddress(string doctorID, string newAddress) {
+bool updateDoctorAddress(string doctorID, string newAddress)
+{
 
     if (newAddress.length() > 30)
         return false;
@@ -248,7 +241,8 @@ bool updateDoctorAddress(string doctorID, string newAddress) {
 }
 
 // Update doctor ID
-bool updateDoctorID(string oldID, string newID) {
+bool updateDoctorID(string oldID, string newID)
+{
 
     if (newID.empty() || newID.length() > 15)
         return false;
@@ -282,39 +276,46 @@ bool updateDoctorID(string oldID, string newID) {
 
     file.close();
 
-    if (oldID != newID)                                                   
-        secIdx.onDoctorIDUpdated(oldID, newID, doctor.doctorName, doctor.specialty);
+    if (oldID != newID)
+    {
+        if (!PrimaryIndex::updateDoctorID(oldID, newID))
+            return false;
+
+        if (!secIdx.onDoctorIDUpdated(oldID, newID, doctor.doctorName, doctor.specialty))
+            return false;
+    }
 
     return true;
 }
 
 // Delete doctor
-bool deleteDoctor(string doctorID) {
 
-    int position = findDoctor(doctorID);
+bool deleteDoctor(string doctorID){
+    int position = PrimaryIndex::findDoctor(doctorID);
 
     if (position == -1)
         return false;
 
-    fstream file(DOCTOR_FILE, ios::in | ios::out | ios::binary);
+    char record[DOCTOR_RECORD_SIZE];
 
-    if (!file)
+    // Read Doctor information before deleting
+    if (!readRecord(DOCTOR_FILE, position, record, DOCTOR_RECORD_SIZE))
         return false;
 
-    char record[DOCTOR_RECORD_SIZE];                 
-    file.seekg(position);                           
-    file.read(record, DOCTOR_RECORD_SIZE);          
-    Doctor doctor = deserializeDoctor(record);     
+    Doctor doctor = deserializeDoctor(record);
 
-    file.clear(); 
-    file.seekp(position);
+    // Delete from data file and update AVAIL LIST
+    if (!deleteRecord(DOCTOR_FILE, position, DOCTOR_RECORD_SIZE,0))
+        return false;
 
-    char mark = '*';
+    // Remove Doctor ID from primary index
+    if (!PrimaryIndex::removeDoctor(doctorID))
+        return false;
 
-    file.write(&mark, 1);
-
-    file.close();
-    secIdx.onDoctorDeleted(doctor.doctorID, doctor.doctorName, doctor.specialty);
+    // Remove Doctor from secondary indexes
+    if (!secIdx.onDoctorDeleted(doctor.doctorID, doctor.doctorName, doctor.specialty))
+        return false;
 
     return true;
 }
+

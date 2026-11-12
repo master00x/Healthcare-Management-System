@@ -1,9 +1,10 @@
-
 #include <iostream>
 #include <limits>
 #include "Appointment/AppointmentManager.h"
 #include "Doctors/doctorManager.h"
+#include "PrimaryIndex/PrimaryIndex.h"
 #include "SecondaryIndex/secondaryIndexManager.h"
+#include "FileManagement/fileManager.h"
 
 using namespace std;
 
@@ -162,10 +163,19 @@ void appointmentMenu()
     } while (choice != 0);
 }
 
-int main()
-{
-    secIdx.open();
-    initializeDoctorFile();
+int main(){
+    initializeFile("Data/Doctors.dat");
+    initializeFile("Data/Appointments.dat");
+
+    if (!PrimaryIndex::load()){
+        cout << "Error loading primary indexes!" << endl;
+        return 1;
+    }
+    if (!secIdx.open()){
+        cout << "Error loading secondary indexes!" << endl;
+        return 1;
+    }
+
 
     int choice;
 
@@ -207,6 +217,12 @@ int main()
         }
 
     } while (choice != 0);
+
+    
+    if (!PrimaryIndex::save()){
+        cout << "Error saving primary indexes!" << endl;
+    }
+    secIdx.close();
 
     return 0;
 }

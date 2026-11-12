@@ -1,10 +1,11 @@
-
 #include "AppointmentManager.h"
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <string>
 #include "../SecondaryIndex/secondaryIndexManager.h"
+#include "../PrimaryIndex/PrimaryIndex.h"
+#include "../FileManagement/fileManager.h"
 extern SecondaryIndexManager secIdx;
 using namespace std;
 
@@ -21,64 +22,12 @@ bool setField(char *field, int size, const string &value)
 
 bool doctorExists(string id)
 {
-    ifstream file("Data/Doctors.dat", ios::binary);
-
-    if (!file)
-        return false;
-
-    char record[95];
-    char searchID[15];
-
-    memset(searchID, ' ', 15);
-    memcpy(searchID, id.c_str(), id.length());
-
-    file.seekg(sizeof(int), ios::beg);
-
-    while (file.read(record, 95))
-    {
-        if (record[0] == '*')
-            continue;
-
-        if (memcmp(record, searchID, 15) == 0)
-        {
-            file.close();
-            return true;
-        }
-    }
-
-    file.close();
-    return false;
+    return PrimaryIndex::findDoctor(id) != -1;
 }
 
 bool appointmentExists(string id)
 {
-    ifstream file("Data/Appointments.dat", ios::binary);
-
-    if (!file)
-        return false;
-
-    char record[60];
-    char searchID[15];
-
-    memset(searchID, ' ', 15);
-    memcpy(searchID, id.c_str(), id.length());
-
-    file.seekg(sizeof(int), ios::beg);
-
-    while (file.read(record, 60))
-    {
-        if (record[30] == '*')
-            continue;
-
-        if (memcmp(record + 30, searchID, 15) == 0)
-        {
-            file.close();
-            return true;
-        }
-    }
-
-    file.close();
-    return false;
+    return PrimaryIndex::findAppointment(id) != -1;
 }
 
 void addAppointment()
@@ -131,32 +80,27 @@ void addAppointment()
     setField(app.appointmentDate, 30, date);
     setField(app.DoctorID, 15, doctorID);
 
-    fstream file(
-        "Data/Appointments.dat",
-        ios::in | ios::out | ios::binary);
+    int offset = insertRecord("Data/Appointments.dat", reinterpret_cast<char *>(&app), APPPOINTMENT_SIZE);
 
-    if (!file)
-    {
-        cout << "Error opening Appointments.dat!\n";
+    if (offset == -1){
+        cout << "Error writing Appointment!\n";
         return;
     }
 
-    file.seekp(0, ios::end);
+    if (!PrimaryIndex::insertAppointment(id, offset)){
+        cout << "Error updating Appointment Primary Index!\n";
+        return;
+    }
 
-    file.write(
-        reinterpret_cast<char *>(&app),
-        sizeof(Appointment));
+    if (!secIdx.onAppointmentAdded(id, doctorID)){
+        cout << "Error updating Appointment Secondary Index!\n";
+        return;
+    }
 
-    if (!file)
-        cout << "Error writing Appointment!\n";
-    else
-        cout << "Appointment added successfully!\n";
-        secIdx.onAppointmentAdded(id, doctorID); 
-
-    file.close();
+    cout << "Appointment added successfully!\n";
 }
-void displayAppointment()
-{
+
+void displayAppointment(){
     ifstream file("Data/Appointments.dat", ios::binary);
 
     if (!file)
@@ -195,155 +139,102 @@ void displayAppointment()
     file.close();
 }
 
-void updateAppointmentDate()
-{
+
+void updateAppointmentDate(){
     string id, newDate;
 
-    cout << "\nEnter Appointment ID: ";
+    cout << "Enter Appointment ID: ";
     getline(cin, id);
 
     cout << "Enter New Appointment Date: ";
     getline(cin, newDate);
 
-    if (id.empty() || newDate.empty())
-    {
-        cout << "Error: Fields cannot be empty!\n";
+    if (id.empty() || newDate.empty() || id.length() > 15 || newDate.length() > 30){
+        cout << "Invalid input!\n";
         return;
     }
 
-    if (id.length() > 15 || newDate.length() > 30)
-    {
-        cout << "Error: Field size exceeded!\n";
+    int offset = PrimaryIndex::findAppointment(id);
+
+    if (offset == -1){
+        cout << "Appointment not found!\n";
         return;
     }
 
-    char searchID[15];
+    fstream file("Data/Appointments.dat", ios::in | ios::out | ios::binary);
 
-    memset(searchID, ' ', 15);
-    memcpy(searchID, id.c_str(), id.length());
-
-    fstream file(
-        "Data/Appointments.dat",
-        ios::in | ios::out | ios::binary);
-
-    if (!file)
-    {
-        cout << "Error opening Appointments.dat!\n";
+    if (!file){
+        cout << "Cannot open Appointments.dat!\n";
         return;
     }
 
     Appointment app;
 
-    file.seekg(sizeof(int), ios::beg);
+    file.seekg(offset, ios::beg);
 
-    while (true)
-    {
-        streampos recordPosition = file.tellg();
-
-        if (!file.read(reinterpret_cast<char *>(&app), sizeof(Appointment)))
-            break;
-
-        if (app.appointmentID[0] == '*')
-            continue;
-
-        if (memcmp(app.appointmentID, searchID, 15) == 0)
-        {
-            setField(app.appointmentDate, 30, newDate);
-
-            file.clear();
-            file.seekp(recordPosition);
-
-            file.write(
-                reinterpret_cast<char *>(&app),
-                sizeof(Appointment));
-
-            if (!file)
-                cout << "Error updating Appointment!\n";
-            else
-                cout << "Appointment updated successfully!\n";
-
-            file.close();
-            return;
-        }
+    if (!file.read(reinterpret_cast<char*>(&app), sizeof(app))){
+        cout << "Error reading Appointment!\n";
+        return;
     }
 
-    cout << "Appointment not found!\n";
+    setField(app.appointmentDate, 30, newDate);
 
-    file.close();
+    file.seekp(offset, ios::beg);
+
+    file.write(reinterpret_cast<char*>(&app), sizeof(app));
+
+    if (!file){
+        cout << "Error updating Appointment!\n";
+        return;
+    }
+
+    cout << "Appointment updated successfully!\n";
 }
 
-void deleteAppointment()
-{
+
+
+void deleteAppointment(){
     string id;
 
-    cout << "\nEnter Appointment ID: ";
+    cout << "Enter Appointment ID: ";
     getline(cin, id);
 
-    if (id.empty())
-    {
-        cout << "Error: Appointment ID cannot be empty!\n";
+    int offset = PrimaryIndex::findAppointment(id);
+
+    if (offset == -1){
+        cout << "Appointment not found!\n";
         return;
     }
 
-    if (id.length() > 15)
-    {
-        cout << "Error: Appointment ID size exceeded!\n";
+    char record[APPPOINTMENT_SIZE];
+
+    if (!readRecord("Data/Appointments.dat", offset, record, APPPOINTMENT_SIZE)){
+        cout << "Error reading Appointment!\n";
         return;
     }
 
-    char searchID[15];
+    // Doctor ID begins at byte 45
+    string doctorID(record + 45, 15);
 
-    memset(searchID, ' ', 15);
-    memcpy(searchID, id.c_str(), id.length());
+    while (!doctorID.empty() && doctorID.back() == ' '){
+        doctorID.pop_back();
+    }
 
-    fstream file(
-        "Data/Appointments.dat",
-        ios::in | ios::out | ios::binary);
-
-    if (!file)
-    {
-        cout << "Error opening Appointments.dat!\n";
+    // Appointment ID begins at byte 30
+    if (!deleteRecord("Data/Appointments.dat", offset, APPPOINTMENT_SIZE,30)){
+        cout << "Error deleting Appointment!\n";
         return;
     }
 
-    Appointment app;
-
-    file.seekg(sizeof(int), ios::beg);
-
-    while (true)
-    {
-        streampos recordPosition = file.tellg();
-
-        if (!file.read(reinterpret_cast<char *>(&app), sizeof(Appointment)))
-            break;
-
-        if (app.appointmentID[0] == '*')
-            continue;
-
-        if (memcmp(app.appointmentID, searchID, 15) == 0)
-        {
-            string doctorID(app.DoctorID, 15);                             
-            while (!doctorID.empty() && doctorID.back() == ' ') doctorID.pop_back();
-
-            char deletedMarker = '*';
-
-            file.clear();
-            file.seekp(recordPosition + streamoff(30));
-
-            file.write(&deletedMarker, sizeof(char));
-
-            if (!file)
-                cout << "Error deleting Appointment!\n";
-            else
-                cout << "Appointment deleted successfully!\n";
-                secIdx.onAppointmentDeleted(id, doctorID);      
-
-            file.close();
-            return;
-        }
+    if (!PrimaryIndex::removeAppointment(id)){
+        cout << "Error updating Appointment Primary Index!\n";
+        return;
     }
 
-    cout << "Appointment not found!\n";
+    if (!secIdx.onAppointmentDeleted(id, doctorID)){
+        cout << "Error updating Appointment Secondary Index!\n";
+        return;
+    }
 
-    file.close();
+    cout << "Appointment deleted successfully!\n";
 }

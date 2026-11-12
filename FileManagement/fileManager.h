@@ -14,8 +14,10 @@ void initializeFile(string filename);
 int readHeader(string filename);
 void writeHeader(string filename, int offset);
 int getFirstAvailable(string filename);
-void insertRecord (string filename ,char record[], int recordSize);
-void deleteRecord(string filename, int recordOffset,int recordSize);
+
+int insertRecord(string filename, char record[], int recordSize);
+
+bool deleteRecord(string filename, int recordOffset, int recordSize, int markerOffset = 0);
 bool readRecord(string filename, int recordOffset,char record[], int recordSize);
 
 
