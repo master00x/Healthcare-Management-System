@@ -5,6 +5,7 @@
 #include "PrimaryIndex/PrimaryIndex.h"
 #include "SecondaryIndex/secondaryIndexManager.h"
 #include "FileManagement/fileManager.h"
+#include "QueryEngine/queryEngine.h"
 
 using namespace std;
 
@@ -163,9 +164,35 @@ void appointmentMenu()
     } while (choice != 0);
 }
 
+void queryMenu()
+{
+    string query;
+    cout << "Enter query (example: SELECT * FROM Doctors WHERE Specialty = 'Cardiology'):\n";
+    if (!getline(cin, query))
+    {
+        cout << "Unable to read query input.\n";
+        return;
+    }
+
+    ParsedQuery parsed;
+    if (!parseQuery(query, parsed))
+    {
+        cout << "Invalid query. Use SELECT field FROM table with optional WHERE conditions joined by AND.\n";
+        return;
+    }
+
+    string error;
+    if (!executeQuery(parsed, secIdx, cout, error))
+        cout << "Query error: " << error << '\n';
+}
+
 int main(){
-    initializeFile("Data/Doctors.dat");
-    initializeFile("Data/Appointments.dat");
+    if (!initializeFile("Data/Doctors.dat") ||
+        !initializeFile("Data/Appointments.dat"))
+    {
+        cout << "Error initializing data files!" << endl;
+        return 1;
+    }
 
     if (!PrimaryIndex::load()){
         cout << "Error loading primary indexes!" << endl;
@@ -185,6 +212,7 @@ int main(){
         cout << "1. Doctor Management\n";
         cout << "2. Appointment Management\n";
         cout << "3. Print Secondary Indexes\n";
+        cout << "4. Run Query\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
 
@@ -208,6 +236,9 @@ int main(){
             break;
         case 3:
             secIdx.printAll();
+            break;
+        case 4:
+            queryMenu();
             break;
         case 0:
             cout << "Exiting...\n";

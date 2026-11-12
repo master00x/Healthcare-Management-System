@@ -1,27 +1,35 @@
 #include "fileManager.h"
 
+#include <filesystem>
+
 using namespace std;
 
-void initializeFile(string filename)
+bool initializeFile(string filename)
 {
+    filesystem::path path(filename);
+    error_code error;
+    if (path.has_parent_path())
+        filesystem::create_directories(path.parent_path(), error);
+    if (error)
+        return false;
+
     fstream file(filename, ios::in | ios::out | ios::binary);
 
     if (!file.is_open())
     {
-        // Create the file
         ofstream createfile(filename, ios::out | ios::binary);
-        createfile.close();
+        if (!createfile)
+            return false;
 
-        // Reopen the file for reading and writing
-        file.clear();
-        file.open(filename, ios::in | ios::out | ios::binary);
-
-        // Initialize the header
         int header = -1;
-        file.write((char *)&header, sizeof(header));
+        createfile.write(reinterpret_cast<const char *>(&header), sizeof(header));
+        if (!createfile)
+            return false;
+        createfile.close();
     }
 
     file.close();
+    return true;
 }
 
 int readHeader(string filename)

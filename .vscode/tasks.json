@@ -18,6 +18,7 @@
         "PrimaryIndex/PrimaryIndex.cpp",
         "SecondaryIndex/secondaryIndex.cpp",
         "SecondaryIndex/secondaryIndexManager.cpp",
+        "QueryEngine/queryEngine.cpp",
         "-o",
         "Healthcare.exe"
       ],

@@ -8,7 +8,7 @@
 using namespace std;
 
 // Initialize data files
-void initializeFile(string filename);
+bool initializeFile(string filename);
 
 
 int readHeader(string filename);

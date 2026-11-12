@@ -91,9 +91,10 @@ bool SecondaryIndexManager::onDoctorIDUpdated(const string &oldID, const string 
 {
     bool a = nameIndex.updatePrimaryKey(name, oldID, newID);
     bool b = specialtyIndex.updatePrimaryKey(specialty, oldID, newID);
-
-
-    return a && b;
+    bool c = true;
+    if (!appointmentIDsByDoctor(oldID).empty())
+        c = appointmentDoctorIndex.renameKey(oldID, newID);
+    return a && b && c;
 }
 
 

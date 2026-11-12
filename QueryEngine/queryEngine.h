@@ -7,6 +7,8 @@
 
 using namespace std;
 
+class SecondaryIndexManager;
+
 struct Condition
 {
     string field;
@@ -21,5 +23,7 @@ struct ParsedQuery
 };
 
 bool parseQuery(const string& query, ParsedQuery& result);
+bool executeQuery(const ParsedQuery& query, const SecondaryIndexManager& indexes,
+                  ostream& output, string& error);
 
 #endif
