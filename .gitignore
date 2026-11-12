@@ -72,8 +72,9 @@ Data/Doctors.dat
 # Temporary test files
 test_doctor.cpp
 Data/Appointments.dat
-.vscode/tasks.json
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
 
 Data/*.dat
 Data/*.idx
