@@ -7,7 +7,7 @@ bool validateDoctor(const Doctor& doctor, string& errorMessage) {
         return false;
     }
 
-    if (doctor.doctorID.length() > 15) {
+    if (doctor.doctorID.length() > 15) {    
         errorMessage = "Doctor ID is too long.";
         return false;
     }
