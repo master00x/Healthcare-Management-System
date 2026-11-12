@@ -277,6 +277,18 @@ vector<string> SecondaryIndex::search(const string &key) const
     }
     return result;
 }
+// Search, then map each primary key to its record byte offset using the primary index.
+vector<int> SecondaryIndex::searchOffsets(const string &key,int (*findOffset)(const string &)) const
+{
+    vector<int> offsets;
+    for (const string &pk : search(key))
+    {
+        int off = findOffset(pk); // primary index: primary key -> offset
+        if (off != -1)            // -1 = not found, skip it
+            offsets.push_back(off);
+    }
+    return offsets;
+}
 
 
 bool SecondaryIndex::insert(const string &key, const string &primaryKey)

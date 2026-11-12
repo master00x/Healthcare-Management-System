@@ -42,6 +42,10 @@ public:
     vector<string> doctorIDsBySpecialty(const string &specialty) const;
     vector<string> appointmentIDsByDoctor(const string &doctorID) const;
     vector<string> doctorIDsByNameAndSpecialty(const string &name,const string &specialty) const;
+    vector<int> doctorOffsetsByName(const string &name) const;
+    vector<int> doctorOffsetsBySpecialty(const string &specialty) const;
+    vector<int> doctorOffsetsByNameAndSpecialty(const string &name, const string &specialty) const;
+    vector<int> appointmentOffsetsByDoctor(const string &doctorID) const;
 
     void printAll() const;
 
