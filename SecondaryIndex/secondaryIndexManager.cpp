@@ -1,5 +1,5 @@
 #include "secondaryIndexManager.h"
-
+#include "../PrimaryIndex/PrimaryIndex.h"
 using namespace std;
 
 vector<string> intersectSorted(const vector<string> &a, const vector<string> &b)
@@ -135,4 +135,35 @@ void SecondaryIndexManager::printAll() const
     nameIndex.print("Doctor Name index");
     specialtyIndex.print("Doctor Specialty index");
     appointmentDoctorIndex.print("Appointment -> Doctor ID index");
+}
+
+// ---------------------------------------- lookups through the primary index ---
+
+vector<int> SecondaryIndexManager::doctorOffsetsByName(const string &name) const
+{
+    return nameIndex.searchOffsets(name, PrimaryIndex::findDoctor);
+}
+
+vector<int> SecondaryIndexManager::doctorOffsetsBySpecialty(const string &specialty) const
+{
+    return specialtyIndex.searchOffsets(specialty, PrimaryIndex::findDoctor);
+}
+
+vector<int> SecondaryIndexManager::doctorOffsetsByNameAndSpecialty(
+    const string &name, const string &specialty) const
+{
+    // intersect the two ID lists first, then ask the primary index for each offset
+    vector<int> offsets;
+    for (const string &id : doctorIDsByNameAndSpecialty(name, specialty))
+    {
+        int off = PrimaryIndex::findDoctor(id);
+        if (off != -1)
+            offsets.push_back(off);
+    }
+    return offsets;
+}
+
+vector<int> SecondaryIndexManager::appointmentOffsetsByDoctor(const string &doctorID) const
+{
+    return appointmentDoctorIndex.searchOffsets(doctorID, PrimaryIndex::findAppointment);
 }

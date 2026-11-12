@@ -26,7 +26,7 @@ public:
 
     int findKey(const string &key) const;
     vector<string> search(const string &key) const;
-
+    vector<int> searchOffsets(const string &key, int (*findOffset)(const string &)) const;
     int keyCount() const { return (int)entries.size(); }
     void print(const string &title) const; 
     string listFileName() const { return listPath; }
